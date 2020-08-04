@@ -41,7 +41,58 @@ public class App {
     }
 
     public static void convert(Map<String, Object> map, List<Schema.Field> fields) {
+        for (Schema.Field field : fields) {
+            Map<String, Object> converted = convertField(field);
+            map.put(field.name(), converted);
+        }
+    }
 
+    private static String convertAvroTypeToElasticType(String avroType) {
+        switch (avroType) {
+            case "double":
+                return "double";
+            case "float":
+                return "double";
+            case "int":
+                return "int";
+            case "long":
+                return "long";
+            case "string":
+                return "text";
+            default:
+                return "text";
+        }
+    }
+
+    private static Map<String, Object> convertField(Schema.Field field) {
+        Map<String, Object> converted = new HashMap<>();
+
+        String schemaName = field.schema().getName();
+
+        if (field.getObjectProps().containsKey(KEY_TYPE)) {
+            converted.put("type", field.getObjectProp(KEY_TYPE));
+        } else {
+            converted.put("type", convertAvroTypeToElasticType(schemaName));
+        }
+
+        if (field.getObjectProps().containsKey(KEY_FIELDS)) {
+            Map<String, Object> fields = new HashMap<>();
+            Object temp = field.getObjectProps().get(KEY_FIELDS);
+            if (!(temp instanceof Map)) {
+                System.out.println(String.format("The property %s in field %s was not a JSON map.", KEY_FIELDS, field.name()));
+                System.exit(1);
+            }
+
+            Map<String, Object> prop = (Map<String, Object>)temp;
+            prop.entrySet().forEach(set -> {
+                Map<String, Object> inner = new HashMap<>();
+                inner.put("type", set.getValue());
+                fields.put(set.getKey(), inner);
+            });
+            converted.put("fields", fields);
+        }
+
+        return converted;
     }
 
     public static void writeJson(Map<String, Object> map, String output) throws IOException  {

@@ -9,6 +9,10 @@
             "es_fields": {
                 "keyword": "keyword"
             }
+        },
+        {
+            "type": "string",
+            "name": "password"
         }
     ]
 }

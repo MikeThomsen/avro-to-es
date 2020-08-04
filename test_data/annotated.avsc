@@ -1,0 +1,14 @@
+{
+    "type": "record",
+    "name": "UserRecord",
+    "fields": [
+        {
+            "type": "string",
+            "name": "username",
+            "es_type": "text",
+            "es_fields": {
+                "keyword": "keyword"
+            }
+        }
+    ]
+}

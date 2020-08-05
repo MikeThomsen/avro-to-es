@@ -37,6 +37,32 @@
                 ]
             },
             "name": "contact"
+        },
+        {
+            "type": [{
+                "type": "array",
+                "items": {
+                    "type": "record",
+                    "name": "MessageRecord",
+                    "fields": [
+                        {
+                            "name": "message",
+                            "type": "string"
+                        }
+                    ]
+                }
+            }, "null"],
+            "name": "messages"
+        },
+        {
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "long",
+                    "logicalType": "timestamp-millis"
+                }
+            },
+            "name": "logins"
         }
     ]
 }

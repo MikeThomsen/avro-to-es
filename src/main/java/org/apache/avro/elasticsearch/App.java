@@ -16,9 +16,13 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import static org.apache.avro.Schema.Type.ARRAY;
 import static org.apache.avro.Schema.Type.BOOLEAN;
+import static org.apache.avro.Schema.Type.NULL;
 import static org.apache.avro.Schema.Type.RECORD;
+import static org.apache.avro.Schema.Type.UNION;
 
 public class App {
     public static final String KEY_TYPE = "es_type";
@@ -46,11 +50,17 @@ public class App {
 
     public static void convert(Map<String, Object> map, List<Schema.Field> fields) {
         for (Schema.Field field : fields) {
-            Map<String, Object> converted = convertField(field);
-            map.put(field.name(), converted);
+            Schema.Field temp = field;
 
-            if (field.schema().getType() == RECORD) {
-                convert((Map<String, Object>) converted.get("properties"), field.schema().getFields());
+            if (field.schema().getType() == UNION) {
+
+            }
+
+            Map<String, Object> converted = convertField(temp);
+            map.put(temp.name(), converted);
+
+            if (temp.schema().getType() == RECORD) {
+                convert((Map<String, Object>) converted.get("properties"), temp.schema().getFields());
             }
         }
     }
@@ -79,8 +89,28 @@ public class App {
     private static Map<String, Object> convertField(Schema.Field field) {
         Map<String, Object> converted = new HashMap<>();
 
-        Schema.Type schemaName = field.schema().getType();
-        LogicalType lt = field.schema().getLogicalType();
+        Schema tempSchema = field.schema();
+
+        Schema.Type schemaName = tempSchema.getType();
+        LogicalType lt = tempSchema.getLogicalType();
+
+        if (schemaName == UNION) {
+            List<Schema> types = field.schema().getTypes();
+            long count = types.stream().filter(schema -> schema.getType() == NULL).count();
+            if (count == 1) {
+                Optional<Schema> notNullOpt = types.stream().filter(schema -> schema.getType() != NULL).findFirst();
+                tempSchema = notNullOpt.get();
+
+                schemaName = tempSchema.getType();
+                lt = tempSchema.getLogicalType();
+            }
+        }
+
+        if (schemaName == ARRAY) {
+            tempSchema = tempSchema.getElementType();
+            schemaName = tempSchema.getType();
+            lt = tempSchema.getLogicalType();
+        }
 
         if (field.getObjectProps().containsKey(KEY_TYPE)) {
             converted.put("type", field.getObjectProp(KEY_TYPE));
@@ -90,6 +120,7 @@ public class App {
 
         if (schemaName == RECORD) {
             converted.put("properties", new HashMap<>());
+            convert((Map<String, Object>) converted.get("properties"), tempSchema.getFields());
         }
 
         if (field.getObjectProps().containsKey(KEY_FIELDS)) {

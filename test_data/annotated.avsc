@@ -13,6 +13,30 @@
         {
             "type": "string",
             "name": "password"
+        },
+        {
+            "type": {
+                "type": "long",
+                "logicalType": "timestamp-millis"
+            },
+            "name": "last_login"
+        },
+        {
+            "type": {
+                "type": "record",
+                "name": "contact",
+                "fields": [
+                    {
+                        "name": "email",
+                        "type": "string"
+                    },
+                    {
+                        "name": "phone",
+                        "type": "string"
+                    }
+                ]
+            },
+            "name": "contact"
         }
     ]
 }

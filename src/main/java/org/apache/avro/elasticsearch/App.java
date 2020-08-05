@@ -1,6 +1,7 @@
 package org.apache.avro.elasticsearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -15,6 +16,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.avro.Schema.Type.BOOLEAN;
+import static org.apache.avro.Schema.Type.RECORD;
 
 public class App {
     public static final String KEY_TYPE = "es_type";
@@ -44,21 +48,29 @@ public class App {
         for (Schema.Field field : fields) {
             Map<String, Object> converted = convertField(field);
             map.put(field.name(), converted);
+
+            if (field.schema().getType() == RECORD) {
+                convert((Map<String, Object>) converted.get("properties"), field.schema().getFields());
+            }
         }
     }
 
-    private static String convertAvroTypeToElasticType(String avroType) {
+    private static String convertAvroTypeToElasticType(Schema.Type avroType, LogicalType lt) {
         switch (avroType) {
-            case "double":
+            case BOOLEAN:
+                return "boolean";
+            case DOUBLE:
                 return "double";
-            case "float":
+            case FLOAT:
                 return "double";
-            case "int":
-                return "int";
-            case "long":
-                return "long";
-            case "string":
+            case INT:
+                return lt != null && lt.getName().equals("date") ? "date": "int";
+            case LONG:
+                return lt != null && lt.getName().contains("timestamp") ? "date" : "long";
+            case STRING:
                 return "text";
+            case RECORD:
+                return "nested";
             default:
                 return "text";
         }
@@ -67,12 +79,17 @@ public class App {
     private static Map<String, Object> convertField(Schema.Field field) {
         Map<String, Object> converted = new HashMap<>();
 
-        String schemaName = field.schema().getName();
+        Schema.Type schemaName = field.schema().getType();
+        LogicalType lt = field.schema().getLogicalType();
 
         if (field.getObjectProps().containsKey(KEY_TYPE)) {
             converted.put("type", field.getObjectProp(KEY_TYPE));
         } else {
-            converted.put("type", convertAvroTypeToElasticType(schemaName));
+            converted.put("type", convertAvroTypeToElasticType(schemaName, lt));
+        }
+
+        if (schemaName == RECORD) {
+            converted.put("properties", new HashMap<>());
         }
 
         if (field.getObjectProps().containsKey(KEY_FIELDS)) {
